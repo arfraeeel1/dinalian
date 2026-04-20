@@ -204,7 +204,11 @@ public class dashboard extends javax.swing.JFrame {
         //</editor-fold>
 
         /* Create and display the form */
-        java.awt.EventQueue.invokeLater(() -> new dashboard().setVisible(true));
+        java.awt.EventQueue.invokeLater(() -> {
+            dashboard frame = new dashboard();
+            frame.setLocationRelativeTo(null);
+            frame.setVisible(true);
+        });
     }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables

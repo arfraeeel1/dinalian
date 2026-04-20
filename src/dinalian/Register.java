@@ -264,7 +264,11 @@ public class Register extends javax.swing.JFrame {
         //</editor-fold>
 
         /* Create and display the form */
-        java.awt.EventQueue.invokeLater(() -> new Register().setVisible(true));
+        java.awt.EventQueue.invokeLater(() -> {
+            Register frame = new Register();
+            frame.setLocationRelativeTo(null);
+            frame.setVisible(true);
+        });
     }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables

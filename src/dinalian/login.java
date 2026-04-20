@@ -242,7 +242,11 @@ public class login extends javax.swing.JFrame {
         //</editor-fold>
 
         /* Create and display the form */
-        java.awt.EventQueue.invokeLater(() -> new login().setVisible(true));
+        java.awt.EventQueue.invokeLater(() -> {
+            login frame = new login();
+            frame.setLocationRelativeTo(null);
+            frame.setVisible(true);
+        });
     }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
