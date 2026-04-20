@@ -4,6 +4,13 @@
  */
 package dinalian;
 
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import javax.swing.JOptionPane;
+
 /**
  *
  * @author Huntz Rendever
@@ -11,6 +18,14 @@ package dinalian;
 public class login extends javax.swing.JFrame {
     
     private static final java.util.logging.Logger logger = java.util.logging.Logger.getLogger(login.class.getName());
+    
+    private static final String DB_URL = "jdbc:mysql://localhost:3306/dinalian_db";
+    private static final String DB_USER = "root";
+    private static final String DB_PASSWORD = "";
+    
+    private Connection getConnection() throws SQLException {
+        return DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
+    }
 
     /**
      * Creates new form login
@@ -163,13 +178,39 @@ public class login extends javax.swing.JFrame {
         pack();
     }// </editor-fold>//GEN-END:initComponents
 
-    private void loginbuttonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_loginbuttonActionPerformed
-        // TODO add your handling code here:
-    }//GEN-LAST:event_loginbuttonActionPerformed
+    private void loginbuttonActionPerformed(java.awt.event.ActionEvent evt) {
+        String username = usernametextfield.getText().trim();
+        String password = new String(this.password.getPassword());
+        
+        if (username.isEmpty() || password.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Please enter username and password", "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+        
+        try (Connection conn = getConnection()) {
+            String query = "SELECT * FROM users WHERE username = ? AND password = ?";
+            try (PreparedStatement pstmt = conn.prepareStatement(query)) {
+                pstmt.setString(1, username);
+                pstmt.setString(2, password);
+                ResultSet rs = pstmt.executeQuery();
+                
+                if (rs.next()) {
+                    JOptionPane.showMessageDialog(this, "Login successful!", "Success", JOptionPane.INFORMATION_MESSAGE);
+                    this.dispose();
+                    new dashboard().setVisible(true);
+                } else {
+                    JOptionPane.showMessageDialog(this, "Invalid username or password", "Error", JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        } catch (SQLException ex) {
+            JOptionPane.showMessageDialog(this, "Database error: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
 
-    private void gotoregisterActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_gotoregisterActionPerformed
-        // TODO add your handling code here:
-    }//GEN-LAST:event_gotoregisterActionPerformed
+    private void gotoregisterActionPerformed(java.awt.event.ActionEvent evt) {
+        this.dispose();
+        new Register().setVisible(true);
+    }
 
     private void usernametextfieldActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_usernametextfieldActionPerformed
         // TODO add your handling code here:

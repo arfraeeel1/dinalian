@@ -4,6 +4,12 @@
  */
 package dinalian;
 
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+import javax.swing.JOptionPane;
+
 /**
  *
  * @author Huntz Rendever
@@ -11,6 +17,14 @@ package dinalian;
 public class Register extends javax.swing.JFrame {
     
     private static final java.util.logging.Logger logger = java.util.logging.Logger.getLogger(Register.class.getName());
+    
+    private static final String DB_URL = "jdbc:mysql://localhost:3306/dinalian_db";
+    private static final String DB_USER = "root";
+    private static final String DB_PASSWORD = "";
+    
+    private Connection getConnection() throws SQLException {
+        return DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
+    }
 
     /**
      * Creates new form login
@@ -172,13 +186,49 @@ public class Register extends javax.swing.JFrame {
         pack();
     }// </editor-fold>//GEN-END:initComponents
 
-    private void registeracoountActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_registeracoountActionPerformed
-        // TODO add your handling code here:
-    }//GEN-LAST:event_registeracoountActionPerformed
+    private void registeracoountActionPerformed(java.awt.event.ActionEvent evt) {
+        String username = jTextField1.getText().trim();
+        String password = new String(jPasswordField1.getPassword());
+        String verifyPassword = new String(verfypassword.getPassword());
+        
+        if (username.isEmpty() || password.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Please fill in all fields", "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+        
+        if (!password.equals(verifyPassword)) {
+            JOptionPane.showMessageDialog(this, "Passwords do not match", "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+        
+        if (password.length() < 6) {
+            JOptionPane.showMessageDialog(this, "Password must be at least 6 characters", "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+        
+        try (Connection conn = getConnection()) {
+            String query = "INSERT INTO users (username, password) VALUES (?, ?)";
+            try (PreparedStatement pstmt = conn.prepareStatement(query)) {
+                pstmt.setString(1, username);
+                pstmt.setString(2, password);
+                pstmt.executeUpdate();
+                JOptionPane.showMessageDialog(this, "Registration successful!", "Success", JOptionPane.INFORMATION_MESSAGE);
+                this.dispose();
+                new login().setVisible(true);
+            }
+        } catch (SQLException ex) {
+            if (ex.getErrorCode() == 1062) {
+                JOptionPane.showMessageDialog(this, "Username already exists", "Error", JOptionPane.ERROR_MESSAGE);
+            } else {
+                JOptionPane.showMessageDialog(this, "Database error: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+            }
+        }
+    }
 
-    private void backtologinActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_backtologinActionPerformed
-        // TODO add your handling code here:
-    }//GEN-LAST:event_backtologinActionPerformed
+    private void backtologinActionPerformed(java.awt.event.ActionEvent evt) {
+        this.dispose();
+        new login().setVisible(true);
+    }
 
     private void jTextField1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jTextField1ActionPerformed
         // TODO add your handling code here:
