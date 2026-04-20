@@ -4,6 +4,14 @@
  */
 package dinalian;
 
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import javax.swing.JOptionPane;
+import javax.swing.table.DefaultTableModel;
+
 /**
  *
  * @author Huntz Rendever
@@ -11,12 +19,39 @@ package dinalian;
 public class dashboard extends javax.swing.JFrame {
     
     private static final java.util.logging.Logger logger = java.util.logging.Logger.getLogger(dashboard.class.getName());
-
-    /**
-     * Creates new form dashboard
-     */
+    
+    private static final String DB_URL = "jdbc:mysql://localhost:3306/dinalian_db";
+    private static final String DB_USER = "root";
+    private static final String DB_PASSWORD = "";
+    
+    private Connection getConnection() throws SQLException {
+        return DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
+    }
+    
     public dashboard() {
         initComponents();
+        loadFlowers();
+    }
+    
+    private void loadFlowers() {
+        DefaultTableModel model = (DefaultTableModel) jTable1.getModel();
+        model.setRowCount(0);
+        
+        try (Connection conn = getConnection()) {
+            String query = "SELECT * FROM flowers";
+            try (PreparedStatement pstmt = conn.prepareStatement(query);
+                 ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    model.addRow(new Object[]{
+                        rs.getString("name"),
+                        rs.getString("type"),
+                        rs.getDouble("price")
+                    });
+                }
+            }
+        } catch (SQLException ex) {
+            JOptionPane.showMessageDialog(this, "Error loading flowers: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        }
     }
 
     /**
@@ -162,25 +197,118 @@ public class dashboard extends javax.swing.JFrame {
         pack();
     }// </editor-fold>//GEN-END:initComponents
 
-    private void deleteActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_deleteActionPerformed
-        // TODO add your handling code here:
-    }//GEN-LAST:event_deleteActionPerformed
+    private void deleteActionPerformed(java.awt.event.ActionEvent evt) {
+        int selectedRow = jTable1.getSelectedRow();
+        if (selectedRow == -1) {
+            JOptionPane.showMessageDialog(this, "Please select a flower to delete", "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+        
+        int confirm = JOptionPane.showConfirmDialog(this, "Are you sure you want to delete this flower?", "Confirm Delete", JOptionPane.YES_NO_OPTION);
+        if (confirm != JOptionPane.YES_OPTION) return;
+        
+        DefaultTableModel model = (DefaultTableModel) jTable1.getModel();
+        String name = (String) model.getValueAt(selectedRow, 0);
+        
+        try (Connection conn = getConnection()) {
+            String query = "DELETE FROM flowers WHERE name = ?";
+            try (PreparedStatement pstmt = conn.prepareStatement(query)) {
+                pstmt.setString(1, name);
+                pstmt.executeUpdate();
+                JOptionPane.showMessageDialog(this, "Flower deleted successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
+                loadFlowers();
+            }
+        } catch (SQLException ex) {
+            JOptionPane.showMessageDialog(this, "Database error: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
 
-    private void createActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_createActionPerformed
-        // TODO add your handling code here:
-    }//GEN-LAST:event_createActionPerformed
+    private void createActionPerformed(java.awt.event.ActionEvent evt) {
+        String name = JOptionPane.showInputDialog(this, "Enter Flower Name:");
+        if (name == null || name.trim().isEmpty()) return;
+        
+        String type = JOptionPane.showInputDialog(this, "Enter Flower Type:");
+        if (type == null || type.trim().isEmpty()) return;
+        
+        String priceStr = JOptionPane.showInputDialog(this, "Enter Price:");
+        if (priceStr == null || priceStr.trim().isEmpty()) return;
+        
+        try {
+            double price = Double.parseDouble(priceStr);
+            try (Connection conn = getConnection()) {
+                String query = "INSERT INTO flowers (name, type, price) VALUES (?, ?, ?)";
+                try (PreparedStatement pstmt = conn.prepareStatement(query)) {
+                    pstmt.setString(1, name);
+                    pstmt.setString(2, type);
+                    pstmt.setDouble(3, price);
+                    pstmt.executeUpdate();
+                    JOptionPane.showMessageDialog(this, "Flower added successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
+                    loadFlowers();
+                }
+            }
+        } catch (NumberFormatException ex) {
+            JOptionPane.showMessageDialog(this, "Invalid price format", "Error", JOptionPane.ERROR_MESSAGE);
+        } catch (SQLException ex) {
+            JOptionPane.showMessageDialog(this, "Database error: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
 
-    private void readActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_readActionPerformed
-        // TODO add your handling code here:
-    }//GEN-LAST:event_readActionPerformed
+    private void readActionPerformed(java.awt.event.ActionEvent evt) {
+        loadFlowers();
+        JOptionPane.showMessageDialog(this, "Flowers loaded successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
+    }
 
-    private void updateActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_updateActionPerformed
-        // TODO add your handling code here:
-    }//GEN-LAST:event_updateActionPerformed
+    private void updateActionPerformed(java.awt.event.ActionEvent evt) {
+        int selectedRow = jTable1.getSelectedRow();
+        if (selectedRow == -1) {
+            JOptionPane.showMessageDialog(this, "Please select a flower to update", "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+        
+        DefaultTableModel model = (DefaultTableModel) jTable1.getModel();
+        String currentName = (String) model.getValueAt(selectedRow, 0);
+        String currentType = (String) model.getValueAt(selectedRow, 1);
+        String currentPrice = String.valueOf(model.getValueAt(selectedRow, 2));
+        
+        String name = JOptionPane.showInputDialog(this, "Enter Flower Name:", currentName);
+        if (name == null || name.trim().isEmpty()) return;
+        
+        String type = JOptionPane.showInputDialog(this, "Enter Flower Type:", currentType);
+        if (type == null || type.trim().isEmpty()) return;
+        
+        String priceStr = JOptionPane.showInputDialog(this, "Enter Price:", currentPrice);
+        if (priceStr == null || priceStr.trim().isEmpty()) return;
+        
+        try {
+            double price = Double.parseDouble(priceStr);
+            try (Connection conn = getConnection()) {
+                String query = "UPDATE flowers SET name = ?, type = ?, price = ? WHERE name = ?";
+                try (PreparedStatement pstmt = conn.prepareStatement(query)) {
+                    pstmt.setString(1, name);
+                    pstmt.setString(2, type);
+                    pstmt.setDouble(3, price);
+                    pstmt.setString(4, currentName);
+                    pstmt.executeUpdate();
+                    JOptionPane.showMessageDialog(this, "Flower updated successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
+                    loadFlowers();
+                }
+            }
+        } catch (NumberFormatException ex) {
+            JOptionPane.showMessageDialog(this, "Invalid price format", "Error", JOptionPane.ERROR_MESSAGE);
+        } catch (SQLException ex) {
+            JOptionPane.showMessageDialog(this, "Database error: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
 
-    private void logoutActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_logoutActionPerformed
-        // TODO add your handling code here:
-    }//GEN-LAST:event_logoutActionPerformed
+    private void logoutActionPerformed(java.awt.event.ActionEvent evt) {
+        int confirm = JOptionPane.showConfirmDialog(this, "Are you sure you want to logout?", "Confirm Logout", JOptionPane.YES_NO_OPTION);
+        if (confirm == JOptionPane.YES_OPTION) {
+            this.dispose();
+            login loginFrame = new login();
+            loginFrame.setLocationRelativeTo(null);
+            loginFrame.setVisible(true);
+        }
+    }
 
     /**
      * @param args the command line arguments
