@@ -4,6 +4,9 @@
  */
 package dinalian;
 
+import java.awt.Color;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -23,6 +26,10 @@ public class login extends javax.swing.JFrame {
     private static final String DB_USER = "root";
     private static final String DB_PASSWORD = "";
     
+    private Color originalColor = new Color(204, 153, 255);
+    private Color hoverColor = new Color(220, 180, 255);
+    private Color clickColor = new Color(180, 120, 230);
+    
     private Connection getConnection() throws SQLException {
         return DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
     }
@@ -32,6 +39,40 @@ public class login extends javax.swing.JFrame {
      */
     public login() {
         initComponents();
+        setupButtonEffects();
+    }
+    
+    private void setupButtonEffects() {
+        addButtonHoverEffect(loginbutton);
+        addButtonHoverEffect(gotoregister);
+    }
+    
+    private void addButtonHoverEffect(javax.swing.JButton button) {
+        button.setBackground(originalColor);
+        button.setOpaque(true);
+        
+        button.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                button.setBackground(hoverColor);
+                button.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
+            }
+            
+            @Override
+            public void mouseExited(MouseEvent e) {
+                button.setBackground(originalColor);
+            }
+            
+            @Override
+            public void mousePressed(MouseEvent e) {
+                button.setBackground(clickColor);
+            }
+            
+            @Override
+            public void mouseReleased(MouseEvent e) {
+                button.setBackground(hoverColor);
+            }
+        });
     }
 
     /**
@@ -180,10 +221,10 @@ public class login extends javax.swing.JFrame {
 
     private void loginbuttonActionPerformed(java.awt.event.ActionEvent evt) {
         String username = usernametextfield.getText().trim();
-        String password = new String(this.password.getPassword());
+        String passwordField = new String(this.password.getPassword());
         
-        if (username.isEmpty() || password.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Please enter username and password", "Error", JOptionPane.ERROR_MESSAGE);
+        if (username.isEmpty() || passwordField.isEmpty()) {
+            showErrorMessage("Please enter username and password");
             return;
         }
         
@@ -191,25 +232,40 @@ public class login extends javax.swing.JFrame {
             String query = "SELECT * FROM users WHERE username = ? AND password = ?";
             try (PreparedStatement pstmt = conn.prepareStatement(query)) {
                 pstmt.setString(1, username);
-                pstmt.setString(2, password);
+                pstmt.setString(2, passwordField);
                 ResultSet rs = pstmt.executeQuery();
                 
                 if (rs.next()) {
-                    JOptionPane.showMessageDialog(this, "Login successful!", "Success", JOptionPane.INFORMATION_MESSAGE);
+                    showSuccessMessage("Login successful!");
                     this.dispose();
-                    new dashboard().setVisible(true);
+                    dashboard dashboardFrame = new dashboard();
+                    dashboardFrame.setLocationRelativeTo(null);
+                    dashboardFrame.setVisible(true);
                 } else {
-                    JOptionPane.showMessageDialog(this, "Invalid username or password", "Error", JOptionPane.ERROR_MESSAGE);
+                    showErrorMessage("Invalid username or password");
                 }
             }
         } catch (SQLException ex) {
-            JOptionPane.showMessageDialog(this, "Database error: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+            showErrorMessage("Database error: " + ex.getMessage());
         }
+    }
+    
+    private void showErrorMessage(String message) {
+        JOptionPane.showMessageDialog(this, message, "Error", JOptionPane.ERROR_MESSAGE);
+    }
+    
+    private void showSuccessMessage(String message) {
+        javax.swing.JLabel label = new javax.swing.JLabel(message);
+        label.setFont(new java.awt.Font("Segoe UI", 1, 14));
+        label.setForeground(new Color(0, 150, 0));
+        JOptionPane.showMessageDialog(this, label, "Success", JOptionPane.INFORMATION_MESSAGE);
     }
 
     private void gotoregisterActionPerformed(java.awt.event.ActionEvent evt) {
         this.dispose();
-        new Register().setVisible(true);
+        Register registerFrame = new Register();
+        registerFrame.setLocationRelativeTo(null);
+        registerFrame.setVisible(true);
     }
 
     private void usernametextfieldActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_usernametextfieldActionPerformed

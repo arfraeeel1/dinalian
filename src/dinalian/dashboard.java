@@ -4,12 +4,19 @@
  */
 package dinalian;
 
+import java.awt.Color;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
+import javax.swing.JLabel;
 import javax.swing.JOptionPane;
+import javax.swing.Timer;
 import javax.swing.table.DefaultTableModel;
 
 /**
@@ -24,33 +31,145 @@ public class dashboard extends javax.swing.JFrame {
     private static final String DB_USER = "root";
     private static final String DB_PASSWORD = "";
     
+    private Color originalCreateColor = new Color(153, 102, 255);
+    private Color hoverColor = new Color(180, 130, 255);
+    private Color clickColor = new Color(120, 70, 220);
+    private List<String[]> flowerData = new ArrayList<>();
+    private Timer animationTimer;
+    private float tableOpacity = 0f;
+    
     private Connection getConnection() throws SQLException {
         return DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
     }
     
     public dashboard() {
         initComponents();
+        setupButtonEffects();
+        setupTableAnimation();
         loadFlowers();
+    }
+    
+    private void setupButtonEffects() {
+        addButtonHoverEffect(create);
+        addButtonHoverEffect(delete);
+        addButtonHoverEffect(read);
+        addButtonHoverEffect(update);
+        addButtonHoverEffect(logout);
+    }
+    
+    private void addButtonHoverEffect(javax.swing.JButton button) {
+        button.setBackground(originalCreateColor);
+        button.setOpaque(true);
+        button.setContentAreaFilled(false);
+        
+        button.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                button.setBackground(hoverColor);
+                button.setOpaque(true);
+                button.setContentAreaFilled(true);
+                button.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
+            }
+            
+            @Override
+            public void mouseExited(MouseEvent e) {
+                button.setBackground(originalCreateColor);
+                button.setOpaque(true);
+                button.setContentAreaFilled(true);
+            }
+            
+            @Override
+            public void mousePressed(MouseEvent e) {
+                button.setBackground(clickColor);
+            }
+            
+            @Override
+            public void mouseReleased(MouseEvent e) {
+                button.setBackground(hoverColor);
+            }
+        });
+    }
+    
+    private void setupTableAnimation() {
+        tableOpacity = 0f;
+        animationTimer = new Timer(30, e -> {
+            tableOpacity += 0.1f;
+            if (tableOpacity >= 1f) {
+                tableOpacity = 1f;
+                ((Timer) e.getSource()).stop();
+            }
+            jScrollPane1.repaint();
+        });
     }
     
     private void loadFlowers() {
         DefaultTableModel model = (DefaultTableModel) jTable1.getModel();
         model.setRowCount(0);
+        flowerData.clear();
         
         try (Connection conn = getConnection()) {
-            String query = "SELECT * FROM flowers";
+            String query = "SELECT * FROM flowers ORDER BY id DESC";
             try (PreparedStatement pstmt = conn.prepareStatement(query);
                  ResultSet rs = pstmt.executeQuery()) {
                 while (rs.next()) {
-                    model.addRow(new Object[]{
+                    String[] row = {
                         rs.getString("name"),
                         rs.getString("type"),
-                        rs.getDouble("price")
-                    });
+                        String.format("%.2f", rs.getDouble("price"))
+                    };
+                    flowerData.add(row);
                 }
             }
+            
+            model.setRowCount(0);
+            for (String[] row : flowerData) {
+                model.addRow(row);
+            }
+            
+            if (!flowerData.isEmpty()) {
+                startTableAnimation();
+            }
+            
         } catch (SQLException ex) {
             JOptionPane.showMessageDialog(this, "Error loading flowers: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+    
+    private void startTableAnimation() {
+        tableOpacity = 0f;
+        jTable1.setForeground(new Color(0, 0, 0, 0));
+        animationTimer.start();
+        
+        new Thread(() -> {
+            try {
+                Thread.sleep(200);
+                javax.swing.SwingUtilities.invokeLater(() -> {
+                    jTable1.setForeground(Color.BLACK);
+                    jScrollPane1.repaint();
+                });
+            } catch (InterruptedException ex) {
+            }
+        }).start();
+    }
+    
+    private void searchFlowers(String searchTerm) {
+        DefaultTableModel model = (DefaultTableModel) jTable1.getModel();
+        model.setRowCount(0);
+        
+        if (searchTerm.isEmpty()) {
+            for (String[] row : flowerData) {
+                model.addRow(row);
+            }
+            return;
+        }
+        
+        String lowerSearch = searchTerm.toLowerCase();
+        for (String[] row : flowerData) {
+            if (row[0].toLowerCase().contains(lowerSearch) || 
+                row[1].toLowerCase().contains(lowerSearch) ||
+                row[2].toLowerCase().contains(lowerSearch)) {
+                model.addRow(row);
+            }
         }
     }
 
@@ -77,6 +196,8 @@ public class dashboard extends javax.swing.JFrame {
         jScrollPane1 = new javax.swing.JScrollPane();
         jTable1 = new javax.swing.JTable();
         jLabel1 = new javax.swing.JLabel();
+        searchField = new javax.swing.JTextField();
+        searchLabel = new javax.swing.JLabel();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
         getContentPane().setLayout(new org.netbeans.lib.awtextra.AbsoluteLayout());
@@ -172,6 +293,19 @@ public class dashboard extends javax.swing.JFrame {
 
         jPanel1.add(jPanel3, new org.netbeans.lib.awtextra.AbsoluteConstraints(110, 10, 630, 120));
 
+        searchLabel.setFont(new java.awt.Font("Segoe UI", 1, 14));
+        searchLabel.setText("Search:");
+        searchLabel.setForeground(new java.awt.Color(255, 255, 0));
+        jPanel1.add(searchLabel, new org.netbeans.lib.awtextra.AbsoluteConstraints(290, 130, 60, 25));
+
+        searchField.setBorder(javax.swing.BorderFactory.createLineBorder(new java.awt.Color(255, 255, 0), 2));
+        searchField.addKeyListener(new java.awt.event.KeyAdapter() {
+            public void keyReleased(java.awt.event.KeyEvent evt) {
+                searchFieldKeyReleased(evt);
+            }
+        });
+        jPanel1.add(searchField, new org.netbeans.lib.awtextra.AbsoluteConstraints(350, 130, 200, 25));
+
         jTable1.setBorder(javax.swing.BorderFactory.createBevelBorder(javax.swing.border.BevelBorder.RAISED, new java.awt.Color(255, 255, 0), new java.awt.Color(255, 255, 0), null, null));
         jTable1.setModel(new javax.swing.table.DefaultTableModel(
             new Object [][] {
@@ -200,7 +334,7 @@ public class dashboard extends javax.swing.JFrame {
     private void deleteActionPerformed(java.awt.event.ActionEvent evt) {
         int selectedRow = jTable1.getSelectedRow();
         if (selectedRow == -1) {
-            JOptionPane.showMessageDialog(this, "Please select a flower to delete", "Error", JOptionPane.ERROR_MESSAGE);
+            animateErrorMessage("Please select a flower to delete");
             return;
         }
         
@@ -215,12 +349,23 @@ public class dashboard extends javax.swing.JFrame {
             try (PreparedStatement pstmt = conn.prepareStatement(query)) {
                 pstmt.setString(1, name);
                 pstmt.executeUpdate();
-                JOptionPane.showMessageDialog(this, "Flower deleted successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
+                animateSuccessMessageWithEffect("Flower deleted successfully!");
                 loadFlowers();
             }
         } catch (SQLException ex) {
-            JOptionPane.showMessageDialog(this, "Database error: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+            animateErrorMessage("Database error: " + ex.getMessage());
         }
+    }
+
+    private void animateErrorMessage(String message) {
+        JOptionPane.showMessageDialog(this, message, "Error", JOptionPane.ERROR_MESSAGE);
+    }
+
+    private void animateSuccessMessageWithEffect(String message) {
+        javax.swing.JLabel label = new javax.swing.JLabel(message);
+        label.setFont(new java.awt.Font("Segoe UI", 1, 14));
+        label.setForeground(new Color(0, 150, 0));
+        JOptionPane.showMessageDialog(this, label, "Success", JOptionPane.INFORMATION_MESSAGE);
     }
 
     private void createActionPerformed(java.awt.event.ActionEvent evt) {
@@ -242,26 +387,55 @@ public class dashboard extends javax.swing.JFrame {
                     pstmt.setString(2, type);
                     pstmt.setDouble(3, price);
                     pstmt.executeUpdate();
-                    JOptionPane.showMessageDialog(this, "Flower added successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
+                    animateSuccessMessageWithEffect("Flower added successfully!");
                     loadFlowers();
                 }
             }
         } catch (NumberFormatException ex) {
-            JOptionPane.showMessageDialog(this, "Invalid price format", "Error", JOptionPane.ERROR_MESSAGE);
+            animateErrorMessage("Invalid price format");
         } catch (SQLException ex) {
-            JOptionPane.showMessageDialog(this, "Database error: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+            animateErrorMessage("Database error: " + ex.getMessage());
         }
     }
 
     private void readActionPerformed(java.awt.event.ActionEvent evt) {
-        loadFlowers();
-        JOptionPane.showMessageDialog(this, "Flowers loaded successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
+        int selectedRow = jTable1.getSelectedRow();
+        
+        if (selectedRow == -1) {
+            animateErrorMessage("Please select a flower to view details");
+            return;
+        }
+        
+        DefaultTableModel model = (DefaultTableModel) jTable1.getModel();
+        String name = (String) model.getValueAt(selectedRow, 0);
+        String type = (String) model.getValueAt(selectedRow, 1);
+        String price = String.valueOf(model.getValueAt(selectedRow, 2));
+        
+        String details = "<html><body>"
+                + "<h style='color: #6A0DAD; font-size: 16px;'>Flower Details</h><br><br>"
+                + "<b>Flower Name:</b> " + name + "<br><br>"
+                + "<b>Flower Type:</b> " + type + "<br><br>"
+                + "<b>Price:</b> $" + price
+                + "</body></html>";
+        
+        JLabel label = new JLabel(details);
+        label.setFont(new java.awt.Font("Segoe UI", java.awt.Font.PLAIN, 14));
+        JOptionPane.showMessageDialog(this, label, "View Flower", JOptionPane.INFORMATION_MESSAGE);
+    }
+    
+    private void searchFieldKeyReleased(java.awt.event.KeyEvent evt) {
+        String searchTerm = searchField.getText().trim();
+        searchFlowers(searchTerm);
+    }
+    
+    private void animateSuccessMessage(String message) {
+        JOptionPane.showMessageDialog(this, message, "Success", JOptionPane.INFORMATION_MESSAGE);
     }
 
     private void updateActionPerformed(java.awt.event.ActionEvent evt) {
         int selectedRow = jTable1.getSelectedRow();
         if (selectedRow == -1) {
-            JOptionPane.showMessageDialog(this, "Please select a flower to update", "Error", JOptionPane.ERROR_MESSAGE);
+            animateErrorMessage("Please select a flower to update");
             return;
         }
         
@@ -289,14 +463,14 @@ public class dashboard extends javax.swing.JFrame {
                     pstmt.setDouble(3, price);
                     pstmt.setString(4, currentName);
                     pstmt.executeUpdate();
-                    JOptionPane.showMessageDialog(this, "Flower updated successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
+                    animateSuccessMessageWithEffect("Flower updated successfully!");
                     loadFlowers();
                 }
             }
         } catch (NumberFormatException ex) {
-            JOptionPane.showMessageDialog(this, "Invalid price format", "Error", JOptionPane.ERROR_MESSAGE);
+            animateErrorMessage("Invalid price format");
         } catch (SQLException ex) {
-            JOptionPane.showMessageDialog(this, "Database error: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+            animateErrorMessage("Database error: " + ex.getMessage());
         }
     }
 
@@ -353,6 +527,8 @@ public class dashboard extends javax.swing.JFrame {
     private javax.swing.JTable jTable1;
     private javax.swing.JButton logout;
     private javax.swing.JButton read;
+    private javax.swing.JTextField searchField;
+    private javax.swing.JLabel searchLabel;
     private javax.swing.JButton update;
     // End of variables declaration//GEN-END:variables
 }

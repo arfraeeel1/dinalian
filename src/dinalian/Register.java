@@ -4,6 +4,9 @@
  */
 package dinalian;
 
+import java.awt.Color;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -22,6 +25,10 @@ public class Register extends javax.swing.JFrame {
     private static final String DB_USER = "root";
     private static final String DB_PASSWORD = "";
     
+    private Color originalColor = new Color(204, 153, 255);
+    private Color hoverColor = new Color(220, 180, 255);
+    private Color clickColor = new Color(180, 120, 230);
+    
     private Connection getConnection() throws SQLException {
         return DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
     }
@@ -31,6 +38,40 @@ public class Register extends javax.swing.JFrame {
      */
     public Register() {
         initComponents();
+        setupButtonEffects();
+    }
+    
+    private void setupButtonEffects() {
+        addButtonHoverEffect(registeracoount);
+        addButtonHoverEffect(backtologin);
+    }
+    
+    private void addButtonHoverEffect(javax.swing.JButton button) {
+        button.setBackground(originalColor);
+        button.setOpaque(true);
+        
+        button.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                button.setBackground(hoverColor);
+                button.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
+            }
+            
+            @Override
+            public void mouseExited(MouseEvent e) {
+                button.setBackground(originalColor);
+            }
+            
+            @Override
+            public void mousePressed(MouseEvent e) {
+                button.setBackground(clickColor);
+            }
+            
+            @Override
+            public void mouseReleased(MouseEvent e) {
+                button.setBackground(hoverColor);
+            }
+        });
     }
 
     /**
@@ -192,17 +233,17 @@ public class Register extends javax.swing.JFrame {
         String verifyPassword = new String(verfypassword.getPassword());
         
         if (username.isEmpty() || password.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Please fill in all fields", "Error", JOptionPane.ERROR_MESSAGE);
+            showErrorMessage("Please fill in all fields");
             return;
         }
         
         if (!password.equals(verifyPassword)) {
-            JOptionPane.showMessageDialog(this, "Passwords do not match", "Error", JOptionPane.ERROR_MESSAGE);
+            showErrorMessage("Passwords do not match");
             return;
         }
         
         if (password.length() < 6) {
-            JOptionPane.showMessageDialog(this, "Password must be at least 6 characters", "Error", JOptionPane.ERROR_MESSAGE);
+            showErrorMessage("Password must be at least 6 characters");
             return;
         }
         
@@ -212,22 +253,37 @@ public class Register extends javax.swing.JFrame {
                 pstmt.setString(1, username);
                 pstmt.setString(2, password);
                 pstmt.executeUpdate();
-                JOptionPane.showMessageDialog(this, "Registration successful!", "Success", JOptionPane.INFORMATION_MESSAGE);
+                showSuccessMessage("Registration successful!");
                 this.dispose();
-                new login().setVisible(true);
+                login loginFrame = new login();
+                loginFrame.setLocationRelativeTo(null);
+                loginFrame.setVisible(true);
             }
         } catch (SQLException ex) {
             if (ex.getErrorCode() == 1062) {
-                JOptionPane.showMessageDialog(this, "Username already exists", "Error", JOptionPane.ERROR_MESSAGE);
+                showErrorMessage("Username already exists");
             } else {
-                JOptionPane.showMessageDialog(this, "Database error: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+                showErrorMessage("Database error: " + ex.getMessage());
             }
         }
+    }
+    
+    private void showErrorMessage(String message) {
+        JOptionPane.showMessageDialog(this, message, "Error", JOptionPane.ERROR_MESSAGE);
+    }
+    
+    private void showSuccessMessage(String message) {
+        javax.swing.JLabel label = new javax.swing.JLabel(message);
+        label.setFont(new java.awt.Font("Segoe UI", 1, 14));
+        label.setForeground(new Color(0, 150, 0));
+        JOptionPane.showMessageDialog(this, label, "Success", JOptionPane.INFORMATION_MESSAGE);
     }
 
     private void backtologinActionPerformed(java.awt.event.ActionEvent evt) {
         this.dispose();
-        new login().setVisible(true);
+        login loginFrame = new login();
+        loginFrame.setLocationRelativeTo(null);
+        loginFrame.setVisible(true);
     }
 
     private void jTextField1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jTextField1ActionPerformed
